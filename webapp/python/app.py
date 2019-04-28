@@ -13,7 +13,7 @@ import logging
 import newrelic.agent
 
 
-logging.basicConfig(filename='/tmp/isubata.log')
+logging.basicConfig(filename='/tmp/isubata.log', level=logging.INFO)
 newrelic.agent.initialize('/home/isucon/isubata/webapp/python/newrelic.ini')
 
 
@@ -238,6 +238,26 @@ def fetch_unread():
     time.sleep(1.0)
 
     cur = dbh().cursor()
+##
+#    cur.execute('SELECT id FROM channel')
+#    udict = {}
+#    for r in cur.fetchall():
+#      udict[r['id']] = 0
+#
+#    cur.execute('SELECT channel_id, COUNT(id) as cnt FROM message GROUP BY channel_id')
+#    for r in cur.fetchall():
+#      udict[r['channel_id']] = int(r['cnt'])
+#
+#    cur.execute('SELECT C.id as channel_id, COUNT(M.id) as cnt FROM channel C, haveread R, message M'
+#                ' WHERE C.id = R.channel_id AND M.channel_id = C.id AND R.message_id < M.id AND R.user_id = %s'
+#                ' GROUP BY M.channel_id',
+#                (user_id,))
+#    ucounts = cur.fetchall()
+#    for r in ucounts:
+#      if r['channel_id'] in udict:
+#        udict[r['channel_id']] = int(r['cnt'])
+#
+#    res = list({'channel_id': cid, 'unread': unread} for cid, unread in udict.items())
     cur.execute('SELECT id FROM channel')
     rows = cur.fetchall()
     channel_ids = [row['id'] for row in rows]
@@ -255,6 +275,8 @@ def fetch_unread():
         r['channel_id'] = channel_id
         r['unread'] = int(cur.fetchone()['cnt'])
         res.append(r)
+
+    logging.info(res)
     return flask.jsonify(res)
 
 
