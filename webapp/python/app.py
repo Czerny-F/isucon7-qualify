@@ -9,7 +9,15 @@ import random
 import string
 import tempfile
 import time
+import logging
+import newrelic.agent
 
+
+logging.basicConfig(filename='/tmp/isubata.log')
+newrelic.agent.initialize('/home/isucon/isubata/webapp/python/newrelic.ini')
+
+
+UPLOAD_DIR = '/home/isucon/isubata/webapp/icons'
 
 static_folder = pathlib.Path(__file__).resolve().parent.parent / 'public'
 icons_folder = static_folder / 'icons'
@@ -342,11 +350,12 @@ def post_profile():
 
     display_name = flask.request.form.get('display_name')
     avatar_name = None
-    avatar_data = None
+    # avatar_data = None
 
     if 'avatar_icon' in flask.request.files:
         file = flask.request.files['avatar_icon']
         if file.filename:
+            logging.debug(file.filename)
             ext = os.path.splitext(file.filename)[1] if '.' in file.filename else ''
             if ext not in ('.jpg', '.jpeg', '.png', '.gif'):
                 flask.abort(400)
@@ -359,14 +368,18 @@ def post_profile():
                     flask.abort(400)
 
                 f.seek(0)
+                file.seek(0)
                 data = f.read()
                 digest = hashlib.sha1(data).hexdigest()
 
                 avatar_name = digest + ext
-                avatar_data = data
+                # avatar_data = data
 
-    if avatar_name and avatar_data:
-        cur.execute("INSERT INTO image (name, data) VALUES (%s, _binary %s)", (avatar_name, avatar_data))
+            logging.debug(avatar_name)
+            file.save('%s/%s' % (UPLOAD_DIR, avatar_name))
+
+    if avatar_name:
+        # cur.execute("INSERT INTO image (name, data) VALUES (%s, _binary %s)", (avatar_name, avatar_data))
         cur.execute("UPDATE user SET avatar_icon = %s WHERE id = %s", (avatar_name, user_id))
 
     if display_name:
@@ -375,26 +388,26 @@ def post_profile():
     return flask.redirect('/', 303)
 
 
-def ext2mime(ext):
-    if ext in ('.jpg', '.jpeg'):
-        return 'image/jpeg'
-    if ext == '.png':
-        return 'image/png'
-    if ext == '.gif':
-        return 'image/gif'
-    return ''
-
-
-@app.route('/icons/<file_name>')
-def get_icon(file_name):
-    cur = dbh().cursor()
-    cur.execute("SELECT * FROM image WHERE name = %s", (file_name,))
-    row = cur.fetchone()
-    ext = os.path.splitext(file_name)[1] if '.' in file_name else ''
-    mime = ext2mime(ext)
-    if row and mime:
-        return flask.Response(row['data'], mimetype=mime)
-    flask.abort(404)
+#def ext2mime(ext):
+#    if ext in ('.jpg', '.jpeg'):
+#        return 'image/jpeg'
+#    if ext == '.png':
+#        return 'image/png'
+#    if ext == '.gif':
+#        return 'image/gif'
+#    return ''
+#
+#
+#@app.route('/icons/<file_name>')
+#def get_icon(file_name):
+#    cur = dbh().cursor()
+#    cur.execute("SELECT * FROM image WHERE name = %s", (file_name,))
+#    row = cur.fetchone()
+#    ext = os.path.splitext(file_name)[1] if '.' in file_name else ''
+#    mime = ext2mime(ext)
+#    if row and mime:
+#        return flask.Response(row['data'], mimetype=mime)
+#    flask.abort(404)
 
 
 if __name__ == "__main__":
