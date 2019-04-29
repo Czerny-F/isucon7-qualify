@@ -238,46 +238,25 @@ def fetch_unread():
     time.sleep(1.0)
 
     cur = dbh().cursor()
-##
-#    cur.execute('SELECT id FROM channel')
-#    udict = {}
-#    for r in cur.fetchall():
-#      udict[r['id']] = 0
-#
-#    cur.execute('SELECT channel_id, COUNT(id) as cnt FROM message GROUP BY channel_id')
-#    for r in cur.fetchall():
-#      udict[r['channel_id']] = int(r['cnt'])
-#
-#    cur.execute('SELECT C.id as channel_id, COUNT(M.id) as cnt FROM channel C, haveread R, message M'
-#                ' WHERE C.id = R.channel_id AND M.channel_id = C.id AND R.message_id < M.id AND R.user_id = %s'
-#                ' GROUP BY M.channel_id',
-#                (user_id,))
-#    ucounts = cur.fetchall()
-#    for r in ucounts:
-#      if r['channel_id'] in udict:
-#        udict[r['channel_id']] = int(r['cnt'])
-#
-#    res = list({'channel_id': cid, 'unread': unread} for cid, unread in udict.items())
     cur.execute('SELECT id FROM channel')
-    rows = cur.fetchall()
-    channel_ids = [row['id'] for row in rows]
+    udict = {}
+    for r in cur.fetchall():
+      udict[r['id']] = 0
 
-    res = []
-    for channel_id in channel_ids:
-        cur.execute('SELECT * FROM haveread WHERE user_id = %s AND channel_id = %s', (user_id, channel_id))
-        row = cur.fetchone()
-        if row:
-            cur.execute('SELECT COUNT(*) as cnt FROM message WHERE channel_id = %s AND %s < id',
-                        (channel_id, row['message_id']))
-        else:
-            cur.execute('SELECT COUNT(*) as cnt FROM message WHERE channel_id = %s', (channel_id,))
-        r = {}
-        r['channel_id'] = channel_id
-        r['unread'] = int(cur.fetchone()['cnt'])
-        res.append(r)
+    cur.execute('SELECT channel_id, COUNT(id) as cnt FROM message GROUP BY channel_id')
+    for r in cur.fetchall():
+      udict[r['channel_id']] = int(r['cnt'])
 
-    logging.info(res)
-    return flask.jsonify(res)
+    cur.execute('SELECT C.id as channel_id, ('
+                '  SELECT COUNT(id) as cnt FROM message WHERE channel_id = C.id AND R.message_id < id'
+                ') AS cnt FROM channel C, haveread R'
+                ' WHERE C.id = R.channel_id AND R.user_id = %s', (user_id,))
+    ucounts = cur.fetchall()
+    for r in ucounts:
+      if r['channel_id'] in udict:
+        udict[r['channel_id']] = int(r['cnt'])
+
+    return flask.jsonify(list({'channel_id': cid, 'unread': unread} for cid, unread in udict.items()))
 
 
 @app.route('/history/<int:channel_id>')
