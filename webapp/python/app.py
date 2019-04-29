@@ -206,21 +206,15 @@ def get_message():
     channel_id = int(flask.request.args.get('channel_id'))
     last_message_id = int(flask.request.args.get('last_message_id'))
     cur = dbh().cursor()
-    cur.execute("SELECT * FROM message WHERE id > %s AND channel_id = %s ORDER BY id DESC LIMIT 100",
+    cur.execute('SELECT M.id, M.created_at, M.content, U.name, U.display_name, U.avatar_icon FROM message M, user U'
+                ' WHERE M.id > %s AND M.channel_id = %s AND U.id = M.user_id ORDER BY M.id DESC LIMIT 100',
                 (last_message_id, channel_id))
-    rows = cur.fetchall()
-    response = []
-    for row in rows:
-        r = {}
-        r['id'] = row['id']
-        cur.execute("SELECT name, display_name, avatar_icon FROM user WHERE id = %s", (row['user_id'],))
-        r['user'] = cur.fetchone()
-        r['date'] = row['created_at'].strftime("%Y/%m/%d %H:%M:%S")
-        r['content'] = row['content']
-        response.append(r)
+    response = list({'id': row['id'], 'user': {'name': row['name'], 'display_name': row['display_name'], 'avatar_icon': row['avatar_icon']},
+                     'date': row['created_at'].strftime("%Y/%m/%d %H:%M:%S"),
+                     'content': row['content']} for row in cur.fetchall())
     response.reverse()
 
-    max_message_id = max(r['id'] for r in rows) if rows else 0
+    max_message_id = max(r['id'] for r in response) if response else 0
     cur.execute('INSERT INTO haveread (user_id, channel_id, message_id, updated_at, created_at)'
                 ' VALUES (%s, %s, %s, NOW(), NOW())'
                 ' ON DUPLICATE KEY UPDATE message_id = %s, updated_at = NOW()',
