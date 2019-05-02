@@ -17,11 +17,9 @@ logging.basicConfig(filename='/tmp/isubata.log', level=logging.INFO)
 newrelic.agent.initialize('/home/isucon/isubata/webapp/python/newrelic.ini')
 
 
-UPLOAD_DIR = '/home/isucon/isubata/webapp/icons'
-
 static_folder = pathlib.Path(__file__).resolve().parent.parent / 'public'
 icons_folder = static_folder / 'icons'
-app = flask.Flask(__name__, static_folder=str(static_folder), static_url_path='')
+app = flask.Flask(__name__)
 app.secret_key = 'tonymoris'
 avatar_max_size = 1 * 1024 * 1024
 
@@ -371,7 +369,7 @@ def post_profile():
                 # avatar_data = data
 
             logging.debug(avatar_name)
-            file.save('%s/%s' % (UPLOAD_DIR, avatar_name))
+            file.save('%s/%s' % (str(icons_folder), avatar_name))
 
     if avatar_name:
         # cur.execute("INSERT INTO image (name, data) VALUES (%s, _binary %s)", (avatar_name, avatar_data))

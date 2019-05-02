@@ -1,7 +1,7 @@
 import os
 import MySQLdb.cursors
 
-TARGET = '/home/isucon/isubata/webapp/icons'
+TARGET = '/home/isucon/isubata/webapp/public/icons'
 
 DBCONF = {
     'host': os.environ.get('ISUBATA_DB_HOST', 'localhost'),
