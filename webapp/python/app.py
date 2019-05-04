@@ -83,7 +83,8 @@ def get_initialize():
     cur.execute("DELETE FROM image WHERE id > 1001")
     cur.execute("DELETE FROM channel WHERE id > 10")
     cur.execute("DELETE FROM message WHERE id > 10000")
-    cur.execute("DELETE FROM haveread")
+    # cur.execute("DELETE FROM haveread")
+    cur.execute("DELETE FROM readcount")
     cur.execute('UPDATE channel C SET C.message_count = (SELECT COUNT(M.id) FROM message M WHERE M.channel_id = C.id)')
     cur.close()
     return ('', 204)
@@ -231,11 +232,17 @@ def get_message():
                      'content': row['content']} for row in cur.fetchall())
     response.reverse()
 
-    max_message_id = max(r['id'] for r in response) if response else 0
-    cur.execute('INSERT INTO haveread (user_id, channel_id, message_id, updated_at, created_at)'
-                ' VALUES (%s, %s, %s, NOW(), NOW())'
-                ' ON DUPLICATE KEY UPDATE message_id = %s, updated_at = NOW()',
-                (user_id, channel_id, max_message_id, max_message_id))
+    #max_message_id = max(r['id'] for r in response) if response else 0
+    #cur.execute('INSERT INTO haveread (user_id, channel_id, message_id, updated_at, created_at)'
+    #            ' VALUES (%s, %s, %s, NOW(), NOW())'
+    #            ' ON DUPLICATE KEY UPDATE message_id = %s, updated_at = NOW()',
+    #            (user_id, channel_id, max_message_id, max_message_id))
+
+    cur.execute('SELECT message_count as cnt FROM channel WHERE id = %s', (channel_id,))
+    cnt = int(cur.fetchone()['cnt'])
+    cur.execute('INSERT INTO readcount (user_id, channel_id, num)'
+                ' VALUES (%s, %s, %s) ON DUPLICATE KEY UPDATE num = %s',
+                (user_id, channel_id, cnt, cnt))
 
     return flask.jsonify(response)
 
@@ -246,7 +253,7 @@ def fetch_unread():
     if not user_id:
         flask.abort(403)
 
-    time.sleep(0.1)
+    #time.sleep(0.1)
 
     cur = dbh().cursor()
     cur.execute('SELECT id, message_count as cnt FROM channel')
@@ -254,14 +261,15 @@ def fetch_unread():
     for r in cur.fetchall():
       udict[r['id']] = int(r['cnt'])
 
-    cur.execute('SELECT C.id as channel_id, ('
-                '  SELECT COUNT(id) as cnt FROM message WHERE channel_id = C.id AND R.message_id < id'
-                ') AS cnt FROM channel C, haveread R'
-                ' WHERE C.id = R.channel_id AND R.user_id = %s', (user_id,))
+    cur.execute('SELECT channel_id, num as cnt FROM readcount WHERE user_id = %s', (user_id,))
+    #cur.execute('SELECT C.id as channel_id, ('
+    #            '  SELECT COUNT(id) as cnt FROM message WHERE channel_id = C.id AND R.message_id < id'
+    #            ') AS cnt FROM channel C, haveread R'
+    #            ' WHERE C.id = R.channel_id AND R.user_id = %s', (user_id,))
     ucounts = cur.fetchall()
     for r in ucounts:
       if r['channel_id'] in udict:
-        udict[r['channel_id']] = int(r['cnt'])
+        udict[r['channel_id']] -= int(r['cnt'])
 
     return flask.jsonify(list({'channel_id': cid, 'unread': unread} for cid, unread in udict.items()))
 
