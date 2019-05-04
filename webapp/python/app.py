@@ -91,7 +91,7 @@ def get_initialize():
 
 
 def db_get_user(cur, user_id):
-    cur.execute("SELECT * FROM user WHERE id = %s", (user_id,))
+    cur.execute("SELECT id, name, display_name FROM user WHERE id = %s", (user_id,))
     return cur.fetchone()
 
 
@@ -188,7 +188,7 @@ def get_login():
 def post_login():
     name = flask.request.form['name']
     cur = dbh().cursor()
-    cur.execute("SELECT * FROM user WHERE name = %s", (name,))
+    cur.execute("SELECT id, password, salt FROM user WHERE name = %s", (name,))
     row = cur.fetchone()
     if not row or row['password'] != hashlib.sha1(
             (row['salt'] + flask.request.form['password']).encode('utf-8')).hexdigest():
@@ -403,11 +403,12 @@ def post_profile():
             logging.debug(avatar_name)
             file.save('%s/%s' % (str(icons_folder), avatar_name))
 
-    if avatar_name:
+    if avatar_name and display_name:
+        cur.execute("UPDATE user SET display_name = %s, avatar_icon = %s WHERE id = %s", (display_name, avatar_name, user_id))
+    elif avatar_name:
         # cur.execute("INSERT INTO image (name, data) VALUES (%s, _binary %s)", (avatar_name, avatar_data))
         cur.execute("UPDATE user SET avatar_icon = %s WHERE id = %s", (avatar_name, user_id))
-
-    if display_name:
+    elif display_name:
         cur.execute("UPDATE user SET display_name = %s WHERE id = %s", (display_name, user_id))
 
     return flask.redirect('/', 303)
