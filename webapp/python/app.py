@@ -11,6 +11,8 @@ import tempfile
 import time
 import logging
 import newrelic.agent
+from functools import partial
+from sqlalchemy import create_engine
 
 
 logging.basicConfig(filename='/tmp/isubata.log', level=logging.INFO)
@@ -34,20 +36,35 @@ config = {
 }
 
 
+SCHEME = 'mysql://{user}:{passwd}@{host}/{db}'.format(
+    user=os.environ.get('ISUBATA_DB_USER', 'root'),
+    passwd=os.environ.get('ISUBATA_DB_PASSWORD', ''),
+    host=os.environ.get('ISUBATA_DB_HOST', 'localhost'),
+    db='isubata'
+)
+DBCONF = {'charset': 'utf8mb4', 'autocommit': True}
+
+dbengine = create_engine(SCHEME, connect_args=DBCONF)
+
+
 def dbh():
     if hasattr(flask.g, 'db'):
         return flask.g.db
 
-    flask.g.db = MySQLdb.connect(
-        host   = config['db_host'],
-        port   = config['db_port'],
-        user   = config['db_user'],
-        passwd = config['db_password'],
-        db     = 'isubata',
-        charset= 'utf8mb4',
-        cursorclass= MySQLdb.cursors.DictCursor,
-        autocommit = True,
-    )
+    conn = dbengine.raw_connection()
+    conn.cursor = partial(conn.cursor, MySQLdb.cursors.DictCursor)
+    flask.g.db = conn
+
+    #flask.g.db = MySQLdb.connect(
+    #    host   = config['db_host'],
+    #    port   = config['db_port'],
+    #    user   = config['db_user'],
+    #    passwd = config['db_password'],
+    #    db     = 'isubata',
+    #    charset= 'utf8mb4',
+    #    cursorclass= MySQLdb.cursors.DictCursor,
+    #    autocommit = True,
+    #)
     cur = flask.g.db.cursor()
     cur.execute("SET SESSION sql_mode='TRADITIONAL,NO_AUTO_VALUE_ON_ZERO,ONLY_FULL_GROUP_BY'")
     return flask.g.db
