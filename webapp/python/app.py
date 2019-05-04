@@ -286,7 +286,7 @@ def get_history(channel_id):
 
     N = 20
     cur = dbh().cursor()
-    cur.execute("SELECT COUNT(*) as cnt FROM message WHERE channel_id = %s", (channel_id,))
+    cur.execute("SELECT COUNT(id) as cnt FROM message WHERE channel_id = %s", (channel_id,))
     cnt = int(cur.fetchone()['cnt'])
     max_page = math.ceil(cnt / N)
     if not max_page:
@@ -295,18 +295,27 @@ def get_history(channel_id):
     if not 1 <= page <= max_page:
         flask.abort(400)
 
-    cur.execute("SELECT * FROM message WHERE channel_id = %s ORDER BY id DESC LIMIT %s OFFSET %s",
-                (channel_id, N, (page - 1) * N))
-    rows = cur.fetchall()
-    messages = []
-    for row in rows:
-        r = {}
-        r['id'] = row['id']
-        cur.execute("SELECT name, display_name, avatar_icon FROM user WHERE id = %s", (row['user_id'],))
-        r['user'] = cur.fetchone()
-        r['date'] = row['created_at'].strftime("%Y/%m/%d %H:%M:%S")
-        r['content'] = row['content']
-        messages.append(r)
+##
+    cur.execute('SELECT M.id, M.created_at, M.content, U.name, U.display_name, U.avatar_icon'
+                ' FROM message M JOIN user U ON M.user_id = U.id'
+                ' WHERE M.channel_id = %s ORDER BY M.id DESC LIMIT %s OFFSET %s',
+                (channel_id, N, (page -1) * N))
+    messages = list({'id': row['id'], 'user': {'name': row['name'], 'display_name': row['display_name'], 'avatar_icon': row['avatar_icon']},
+                     'date': row['created_at'].strftime("%Y/%m/%d %H:%M:%S"),
+                     'content': row['content']} for row in cur.fetchall())
+##
+#    cur.execute("SELECT * FROM message WHERE channel_id = %s ORDER BY id DESC LIMIT %s OFFSET %s",
+#                (channel_id, N, (page - 1) * N))
+#    rows = cur.fetchall()
+#    messages = []
+#    for row in rows:
+#        r = {}
+#        r['id'] = row['id']
+#        cur.execute("SELECT name, display_name, avatar_icon FROM user WHERE id = %s", (row['user_id'],))
+#        r['user'] = cur.fetchone()
+#        r['date'] = row['created_at'].strftime("%Y/%m/%d %H:%M:%S")
+#        r['content'] = row['content']
+#        messages.append(r)
     messages.reverse()
 
     channels, description = get_channel_list_info(channel_id)
