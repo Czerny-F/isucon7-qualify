@@ -84,6 +84,7 @@ def get_initialize():
     cur.execute("DELETE FROM channel WHERE id > 10")
     cur.execute("DELETE FROM message WHERE id > 10000")
     cur.execute("DELETE FROM haveread")
+    cur.execute('UPDATE channel C SET C.message_count = (SELECT COUNT(M.id) FROM message M WHERE M.channel_id = C.id)')
     cur.close()
     return ('', 204)
 
@@ -96,6 +97,7 @@ def db_get_user(cur, user_id):
 def db_add_message(cur, channel_id, user_id, content):
     cur.execute("INSERT INTO message (channel_id, user_id, content, created_at) VALUES (%s, %s, %s, NOW())",
                 (channel_id, user_id, content))
+    cur.execute('UPDATE channel SET message_count = message_count + 1 WHERE id = %s', (channel_id,))
 
 
 def login_required(func):
@@ -244,17 +246,13 @@ def fetch_unread():
     if not user_id:
         flask.abort(403)
 
-    # time.sleep(0.1)
+    time.sleep(0.1)
 
     cur = dbh().cursor()
-    cur.execute('SELECT id FROM channel')
+    cur.execute('SELECT id, message_count as cnt FROM channel')
     udict = {}
     for r in cur.fetchall():
-      udict[r['id']] = 0
-
-    cur.execute('SELECT channel_id, COUNT(id) as cnt FROM message GROUP BY channel_id')
-    for r in cur.fetchall():
-      udict[r['channel_id']] = int(r['cnt'])
+      udict[r['id']] = int(r['cnt'])
 
     cur.execute('SELECT C.id as channel_id, ('
                 '  SELECT COUNT(id) as cnt FROM message WHERE channel_id = C.id AND R.message_id < id'
