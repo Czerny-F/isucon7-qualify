@@ -1,13 +1,13 @@
-import multiprocessing
+#import multiprocessing
 
 bind = 'unix:/tmp/gunicorn_isucon.sock'
 backlog = 2048
 
-workers = multiprocessing.cpu_count() * 2 + 1
-workers = 4
+#workers = multiprocessing.cpu_count() * 2 + 1
+workers = 1
 worker_class = 'sync'
-threads = 4
-worker_connections = 1000
+threads = 1500
+worker_connections = 1500
 timeout = 30
 keepalive = 2
 
