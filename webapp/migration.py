@@ -1,4 +1,5 @@
 import os
+import gzip
 import MySQLdb.cursors
 
 TARGET = '/home/isucon/isubata/webapp/public/icons'
@@ -29,5 +30,8 @@ for image in csr.fetchall():
   fname = '%s/%s' % (TARGET, row['name'])
   with open(fname, 'wb') as f:
     f.write(row['data'])
+
+  with gzip.open(fname + '.gz', 'wb') as gz:
+    gz.write(row['data'])
 
   print(fname)

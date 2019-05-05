@@ -10,6 +10,8 @@ import string
 import tempfile
 import time
 import logging
+import gzip
+import shutil
 import newrelic.agent
 import jinja2
 from functools import partial
@@ -404,7 +406,12 @@ def post_profile():
                 # avatar_data = data
 
             logging.debug(avatar_name)
-            file.save('%s/%s' % (str(icons_folder), avatar_name))
+            fname = '%s/%s' % (str(icons_folder), avatar_name)
+            file.save(fname)
+
+            file.seek(0)
+            with gzip.open('%s.gz' % fname, 'wb') as gz:
+                shutil.copyfileobj(file, gz)
 
     if avatar_name and display_name:
         cur.execute("UPDATE user SET display_name = %s, avatar_icon = %s WHERE id = %s", (display_name, avatar_name, user_id))
