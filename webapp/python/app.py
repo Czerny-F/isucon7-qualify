@@ -11,6 +11,7 @@ import tempfile
 import time
 import logging
 import newrelic.agent
+import jinja2
 from functools import partial
 from sqlalchemy import create_engine
 
@@ -24,6 +25,9 @@ icons_folder = static_folder / 'icons'
 app = flask.Flask(__name__)
 app.secret_key = 'tonymoris'
 avatar_max_size = 1 * 1024 * 1024
+
+app.jinja_options = app.jinja_options.copy()
+app.jinja_options['bytecode_cache'] = jinja2.FileSystemBytecodeCache()
 
 if not os.path.exists(str(icons_folder)):
     os.makedirs(str(icons_folder))
