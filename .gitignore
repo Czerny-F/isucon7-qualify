@@ -6,7 +6,6 @@
 webapp/php/vendor
 bench/isucon7q-initial-dataset.sql.gz
 bench/result.json
-bench/*.json
 webapp/public/icons/
 webapp/python/newrelic.ini
 webapp/perl/local
